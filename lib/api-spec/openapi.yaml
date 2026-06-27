@@ -1,22 +1,31 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: NovaContent AI API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: campaigns
+    description: Campaign management
+  - name: generate
+    description: AI content generation
+  - name: analytics
+    description: Analytics and stats
+  - name: export
+    description: Content export
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +33,332 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List user campaigns
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create a campaign
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get a campaign with all generated content
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateCampaign
+      tags: [campaigns]
+      summary: Update a campaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      summary: Delete a campaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /campaigns/{id}/duplicate:
+    post:
+      operationId: duplicateCampaign
+      tags: [campaigns]
+      summary: Duplicate a campaign
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Duplicated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /generate/campaign:
+    post:
+      operationId: generateCampaign
+      tags: [generate]
+      summary: Start async campaign generation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "202":
+          description: Generation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateStarted"
+
+  /generate/status/{taskId}:
+    get:
+      operationId: getGenerationStatus
+      tags: [generate]
+      summary: Poll task generation status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatus"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /generate/regenerate:
+    post:
+      operationId: regenerateContent
+      tags: [generate]
+      summary: Regenerate a single content block
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegenerateRequest"
+      responses:
+        "200":
+          description: Regenerated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedContent"
+
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get dashboard analytics summary
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+  /export/{campaignId}/txt:
+    get:
+      operationId: exportTxt
+      tags: [export]
+      summary: Export campaign as plain text
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Text file
+          content:
+            text/plain:
+              schema:
+                type: string
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +368,300 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    AuthCredentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, email, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Campaign:
+      type: object
+      required: [id, userId, name, productName, description, category, audience, goal, tone, platforms, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        productName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        audience:
+          type: string
+        goal:
+          type: string
+        tone:
+          type: string
+        keywords:
+          type: ["string", "null"]
+        cta:
+          type: ["string", "null"]
+        platforms:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CampaignInput:
+      type: object
+      required: [name, productName, description, category, audience, goal, tone, platforms]
+      properties:
+        name:
+          type: string
+        productName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        audience:
+          type: string
+        goal:
+          type: string
+        tone:
+          type: string
+        keywords:
+          type: string
+        cta:
+          type: string
+        platforms:
+          type: string
+
+    CampaignUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        productName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        audience:
+          type: string
+        goal:
+          type: string
+        tone:
+          type: string
+        keywords:
+          type: string
+        cta:
+          type: string
+        platforms:
+          type: string
+        status:
+          type: string
+
+    GeneratedContent:
+      type: object
+      required: [id, campaignId, contentType, content, createdAt]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        contentType:
+          type: string
+        content:
+          type: string
+        metadata:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    GeneratedImage:
+      type: object
+      required: [id, campaignId, imageUrl, prompt, imageType, createdAt]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        imageUrl:
+          type: string
+        prompt:
+          type: string
+        imageType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CampaignDetail:
+      type: object
+      required: [id, userId, name, productName, description, category, audience, goal, tone, platforms, status, createdAt, updatedAt, content, images]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        productName:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        audience:
+          type: string
+        goal:
+          type: string
+        tone:
+          type: string
+        keywords:
+          type: ["string", "null"]
+        cta:
+          type: ["string", "null"]
+        platforms:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneratedContent"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneratedImage"
+
+    GenerateRequest:
+      type: object
+      required: [campaignId]
+      properties:
+        campaignId:
+          type: integer
+
+    GenerateStarted:
+      type: object
+      required: [taskId, campaignId]
+      properties:
+        taskId:
+          type: string
+        campaignId:
+          type: integer
+
+    TaskStatus:
+      type: object
+      required: [status, progress, campaignId, taskId]
+      properties:
+        taskId:
+          type: string
+        campaignId:
+          type: integer
+        status:
+          type: string
+        progress:
+          type: integer
+        currentStep:
+          type: ["string", "null"]
+        completedSteps:
+          type: array
+          items:
+            type: string
+        error:
+          type: ["string", "null"]
+
+    RegenerateRequest:
+      type: object
+      required: [campaignId, contentType]
+      properties:
+        campaignId:
+          type: integer
+        contentType:
+          type: string
+
+    WeeklyCount:
+      type: object
+      required: [week, count]
+      properties:
+        week:
+          type: string
+        count:
+          type: integer
+
+    ContentTypeCount:
+      type: object
+      required: [contentType, count]
+      properties:
+        contentType:
+          type: string
+        count:
+          type: integer
+
+    AnalyticsSummary:
+      type: object
+      required: [totalCampaigns, totalImages, totalBlogs, totalSocialPosts, campaignsPerWeek, contentTypeBreakdown, recentCampaigns]
+      properties:
+        totalCampaigns:
+          type: integer
+        totalImages:
+          type: integer
+        totalBlogs:
+          type: integer
+        totalSocialPosts:
+          type: integer
+        campaignsPerWeek:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeeklyCount"
+        contentTypeBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentTypeCount"
+        recentCampaigns:
+          type: array
+          items:
+            $ref: "#/components/schemas/Campaign"
