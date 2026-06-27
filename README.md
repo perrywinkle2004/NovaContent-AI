@@ -2,6 +2,10 @@
 > *Generate complete marketing campaigns in seconds — blogs, social posts, newsletters, SEO metadata, and graphics, all from a single product description.*
 
 ---
+## Project Link:
+[NovaContent AI](https://content-ai-forge--carolinespoorth.replit.app/)
+
+---
 
 ## Overview
 NovaContent AI is a full-stack AI-powered content marketing platform. Describe your product once — NovaContent generates a complete, platform-ready campaign: long-form blog articles, Instagram captions, tweet threads, LinkedIn posts, Facebook copy, email newsletters, SEO metadata, and marketing image prompts. All content is generated locally via Ollama (Gemma model) with no external AI API keys required. A rich mock-content fallback keeps the app fully functional when Ollama is not running.
