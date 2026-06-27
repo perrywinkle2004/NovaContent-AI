@@ -1,7 +1,10 @@
-# NovaContent AI
+<img width="227" height="46" alt="Screenshot 2026-06-27 235810" src="https://github.com/user-attachments/assets/cd383096-d71e-49dd-83c0-05837b009292" />
+
 > *Generate complete marketing campaigns in seconds — blogs, social posts, newsletters, SEO metadata, and graphics, all from a single product description.*
+<img width="1906" height="983" alt="Screenshot 2026-06-27 233312" src="https://github.com/user-attachments/assets/b1a4893c-d1f1-4bc6-ae10-17e85461364a" />
 
 ---
+
 ## Project Link:
 [NovaContent AI](https://content-ai-forge--carolinespoorth.replit.app/)
 
@@ -10,19 +13,21 @@
 ## Overview
 NovaContent AI is a full-stack AI-powered content marketing platform. Describe your product once — NovaContent generates a complete, platform-ready campaign: long-form blog articles, Instagram captions, tweet threads, LinkedIn posts, Facebook copy, email newsletters, SEO metadata, and marketing image prompts. All content is generated locally via Ollama (Gemma model) with no external AI API keys required. A rich mock-content fallback keeps the app fully functional when Ollama is not running.
 
+<img width="1918" height="1021" alt="Screenshot 2026-06-27 232045" src="https://github.com/user-attachments/assets/0085e247-66b9-4ce1-8e20-5870b1bffcf5" />
+
+<img width="1918" height="1032" alt="Screenshot 2026-06-27 232218" src="https://github.com/user-attachments/assets/26783169-5899-4afb-b950-7092d68c1292" />
+
 ---
 
 ## Features
-### Feature	Description
-AI Campaign Generator	Multi-step async generation with real-time progress polling
-9 Content Types	Blog, Instagram, Twitter/X, LinkedIn, Facebook, Newsletter, SEO, Marketing Copy, Image Prompts
-Campaign History	Searchable archive of all past campaigns with status badges
-Campaign Detail	Tabbed viewer with one-click copy and per-piece regeneration
-TXT Export	Download any campaign as a formatted plain-text file
-Dashboard Analytics	Campaign stats, content-type breakdown (pie), weekly activity (bar chart)
-JWT Auth	Secure register/login; tokens stored in localStorage, validated on every API request
-Local AI (Ollama)	Runs entirely on your machine — no OpenAI key, no usage costs
-Mock Fallback	Full-fidelity realistic content if Ollama is unavailable
+
+<img width="861" height="572" alt="Screenshot 2026-06-27 235540" src="https://github.com/user-attachments/assets/20d86d2c-52f2-4275-87b3-4cc73160f37c" />
+
+<img width="1896" height="1026" alt="Screenshot 2026-06-27 233140" src="https://github.com/user-attachments/assets/ac041256-8012-432c-b7e8-a499d2534367" />
+
+<img width="1918" height="1046" alt="Screenshot 2026-06-27 233226" src="https://github.com/user-attachments/assets/6cbdd13f-f896-437c-a6a3-7615269ec486" />
+
+<img width="1893" height="1023" alt="Screenshot 2026-06-27 233340" src="https://github.com/user-attachments/assets/df4355e9-9007-4224-8080-fe2f929f117a" />
 
 ---
 
