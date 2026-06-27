@@ -1,0 +1,334 @@
+Build a full-stack AI-powered content marketing platform called NovaContent AI.
+
+=== TECH STACK ===
+
+Frontend: React + TypeScript + Vite + Tailwind CSS + Framer Motion + Lucide React + Recharts + Axios
+Backend: Python + FastAPI + SQLAlchemy + SQLite + JWT Authentication
+Task Queue: Celery + Redis (fall back to FastAPI BackgroundTasks if Redis unavailable)
+Admin: Streamlit (separate page/port)
+AI Text: Ollama with Llama 3.2 or Gemma — if unavailable, return realistic mock content
+AI Images: Stable Diffusion XL — if unavailable, return placeholder image URLs
+
+=== PROJECT STRUCTURE ===
+
+novacontent/
+├── backend/
+│   ├── main.py
+│   ├── auth.py
+│   ├── models.py
+│   ├── database.py
+│   ├── schemas.py
+│   ├── routers/
+│   │   ├── campaigns.py
+│   │   ├── generate.py
+│   │   ├── export.py
+│   │   └── analytics.py
+│   ├── services/
+│   │   ├── ai_text.py       # abstraction layer for text generation
+│   │   ├── ai_image.py      # abstraction layer for image generation
+│   │   └── campaign_builder.py
+│   ├── tasks.py             # Celery tasks
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Landing.tsx
+│   │   │   ├── Login.tsx
+│   │   │   ├── Register.tsx
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Generator.tsx
+│   │   │   ├── History.tsx
+│   │   │   └── Settings.tsx
+│   │   ├── components/
+│   │   │   ├── Layout/
+│   │   │   │   ├── Navbar.tsx
+│   │   │   │   └── Sidebar.tsx
+│   │   │   ├── Campaign/
+│   │   │   │   ├── CampaignForm.tsx
+│   │   │   │   ├── ContentBlock.tsx
+│   │   │   │   ├── ImageBlock.tsx
+│   │   │   │   └── ProgressTracker.tsx
+│   │   │   ├── Dashboard/
+│   │   │   │   ├── StatsCard.tsx
+│   │   │   │   └── ActivityFeed.tsx
+│   │   │   └── UI/
+│   │   │       ├── CopyButton.tsx
+│   │   │       ├── TabPanel.tsx
+│   │   │       └── ExportMenu.tsx
+│   │   ├── context/
+│   │   │   ├── AuthContext.tsx
+│   │   │   └── CampaignContext.tsx
+│   │   ├── api/
+│   │   │   └── client.ts
+│   │   └── main.tsx
+│   ├── package.json
+│   └── vite.config.ts
+└── admin/
+    └── streamlit_app.py
+
+=== BACKEND SETUP ===
+
+1. FastAPI app with CORS enabled for localhost:5173
+
+2. SQLite database with SQLAlchemy ORM. Tables:
+   - users (id, email, hashed_password, created_at)
+   - campaigns (id, user_id, name, product_name, description, category, audience, goal, tone, keywords, cta, platforms, status, created_at, updated_at)
+   - generated_content (id, campaign_id, content_type, content, metadata, created_at)
+   - generated_images (id, campaign_id, image_url, prompt, image_type, created_at)
+   - tasks (id, campaign_id, task_id, status, progress, error, created_at)
+
+3. JWT Auth endpoints:
+   POST /auth/register
+   POST /auth/login
+   GET  /auth/me
+
+4. Campaign endpoints:
+   POST   /campaigns/             — create new campaign record
+   GET    /campaigns/             — list user's campaigns
+   GET    /campaigns/{id}         — get single campaign with all content
+   PUT    /campaigns/{id}         — update campaign
+   DELETE /campaigns/{id}         — delete campaign
+   POST   /campaigns/{id}/duplicate
+
+5. Generation endpoints:
+   POST /generate/campaign        — start full campaign generation (async)
+   GET  /generate/status/{task_id} — poll task progress
+   POST /generate/regenerate      — regenerate a single content block
+   Body: { campaign_id, content_type }
+
+6. Export endpoints:
+   GET /export/{campaign_id}/pdf
+   GET /export/{campaign_id}/docx
+   GET /export/{campaign_id}/txt
+   GET /export/{campaign_id}/zip
+
+7. Analytics endpoint:
+   GET /analytics/summary         — returns stats for dashboard
+
+=== AI SERVICE ABSTRACTION ===
+
+In backend/services/ai_text.py, create a class AITextService with a method generate(prompt, tone) that:
+- First tries to call Ollama at http://localhost:11434 with model llama3.2
+- If Ollama is unavailable (connection error), falls back to returning realistic mock content
+- The mock content should be full and complete (not placeholder text), just pre-written realistic marketing copy
+
+In backend/services/ai_image.py, create a class AIImageService with a method generate(prompt) that:
+- First tries Stable Diffusion XL via local API
+- If unavailable, returns a relevant Unsplash URL based on keywords in the prompt
+- Always returns a URL string, never crashes
+
+=== ASYNC GENERATION FLOW ===
+
+When POST /generate/campaign is called:
+1. Create a task record in the database with status "pending"
+2. Return the task_id immediately to the frontend
+3. In the background (Celery task or BackgroundTask), run these steps in order:
+   - Step 1 (10%): Generate Blog Article
+   - Step 2 (20%): Generate Instagram Caption
+   - Step 3 (30%): Generate 3 Tweets
+   - Step 4 (40%): Generate LinkedIn Post
+   - Step 5 (50%): Generate Facebook Post
+   - Step 6 (60%): Generate Newsletter
+   - Step 7 (70%): Generate SEO Metadata
+   - Step 8 (80%): Generate Marketing Assets (slogan, tagline, headline, brand message)
+   - Step 9 (90%): Generate 3 AI Images
+   - Step 10 (100%): Mark campaign complete
+4. Update task progress in DB after each step
+5. Save each content block to generated_content table as it's created
+
+Frontend polls GET /generate/status/{task_id} every 2 seconds. Response includes:
+{ status, progress (0-100), completed_steps, current_step, campaign_id }
+
+=== PROMPTS TO USE FOR EACH CONTENT TYPE ===
+
+Pass the campaign inputs into each prompt. Use the selected tone throughout.
+
+Blog Article prompt:
+"Write a comprehensive, SEO-optimized blog article for {product_name}. Description: {description}. Target audience: {audience}. Goal: {goal}. Tone: {tone}. Keywords to include: {keywords}. Include: engaging title, introduction, 3-4 main sections with H2 headings, conclusion, and a call-to-action. Length: 900-1100 words."
+
+Instagram Caption prompt:
+"Write an Instagram caption for {product_name}. Audience: {audience}. Tone: {tone}. Include emojis naturally placed throughout, 15-20 relevant hashtags, an engagement question, and CTA: {cta}."
+
+Tweet prompt:
+"Write 3 unique tweet variations for {product_name}. Each under 280 characters. Variation 1: informative tone. Variation 2: emotional/storytelling tone. Variation 3: bold/punchy tone. Include relevant hashtags. CTA: {cta}. Return as JSON array of 3 strings."
+
+LinkedIn prompt:
+"Write a professional LinkedIn post for {product_name}. Business category: {category}. Audience: {audience}. Tone: professional and {tone}. Include a hook, value proposition, brief story or insight, and CTA. 150-300 words."
+
+Facebook prompt:
+"Write a conversational Facebook post for {product_name}. Audience: {audience}. Tone: {tone}. Friendly, engaging, shareable. Include CTA: {cta}. 100-200 words."
+
+Newsletter prompt:
+"Write a marketing email for {product_name}. Audience: {audience}. Goal: {goal}. Tone: {tone}. Include: Subject Line, Preview Text, greeting, main body (2-3 paragraphs), bullet points of key benefits, CTA button text, and sign-off. Return as JSON with keys: subject, preview, body, cta_text."
+
+SEO Metadata prompt:
+"Generate SEO metadata for {product_name}. Description: {description}. Keywords: {keywords}. Return as JSON with keys: seo_title (55-60 chars), meta_description (150-160 chars), focus_keywords (array of 5), long_tail_keywords (array of 8), url_slug."
+
+Marketing Assets prompt:
+"Generate marketing copy assets for {product_name}. Audience: {audience}. Tone: {tone}. Return as JSON with keys: slogan (short, memorable), tagline (descriptive, under 10 words), promotional_headline (attention-grabbing), brand_message (2-3 sentences of core brand value)."
+
+Image generation prompts:
+- Product ad: "Professional product advertisement for {product_name}, {description}, {tone} aesthetic, studio lighting, commercial photography style, high quality"
+- Instagram poster: "Instagram promotional poster for {product_name}, vibrant colors, modern design, social media marketing, {audience} audience, lifestyle photography"
+- Lifestyle image: "Lifestyle product photo for {product_name}, real people using product, authentic, {tone} mood, natural lighting, editorial style"
+
+=== FRONTEND PAGES ===
+
+Landing Page (unauthenticated):
+- Fixed navbar with logo and Login/Get Started buttons
+- Hero: large headline "Generate Complete Marketing Campaigns in Seconds", subtext, animated gradient background, CTA button
+- Features section: 6 feature cards (Blog, Social, Images, SEO, Newsletter, Analytics)
+- How it works: 4-step process visualization
+- Footer with links
+
+Login / Register:
+- Centered card with email + password fields
+- JWT token stored in localStorage
+- Redirect to /dashboard on success
+
+Dashboard (authenticated, default page after login):
+- Sidebar navigation: Dashboard, Generate, History, Settings
+- Stats row: Total Campaigns, Images Generated, Blogs Written, Social Posts — as animated counter cards
+- Recharts bar chart: campaigns created per week
+- Recharts pie chart: content types distribution
+- Recent campaigns list with status badges
+- Quick action button: "New Campaign"
+
+Generator Page:
+- Left panel: Campaign input form
+  - Product Name (text)
+  - Product Description (textarea)
+  - Business Category (select: E-commerce, SaaS, Food & Beverage, Fashion, Health, Education, Finance, Other)
+  - Target Audience (text)
+  - Marketing Goal (select: Brand Awareness, Lead Generation, Sales, Engagement, Launch)
+  - Brand Tone (select: Professional, Friendly, Luxury, Minimal, Corporate, Casual, Humorous, Gen Z, Inspirational)
+  - Platforms (multi-checkbox: Blog, Instagram, Twitter, LinkedIn, Facebook, Newsletter)
+  - Keywords (tag input)
+  - CTA (text, optional)
+  - Submit button: "Generate Campaign"
+
+- Right panel (shown after submit):
+  - Progress tracker with step names and animated progress bar
+  - Content appears section by section as each step completes
+  - Tabs: Blog | Social Media | SEO | Newsletter | Images | Assets
+
+- Each content block:
+  - Rendered content with proper formatting
+  - Top-right action bar: Copy | Download | Regenerate
+  - Regenerate triggers POST /generate/regenerate for just that block
+
+History Page:
+- Search bar at top
+- Grid of campaign cards: name, date, tone badge, status, platform icons
+- Each card: View | Edit | Delete | Duplicate | Export dropdown
+- Clicking View opens full campaign in a modal or new route
+
+Settings Page:
+- Profile section: update name/email
+- Theme toggle: Light / Dark
+- Model preferences: text model selector, image model selector
+- Export preferences
+
+=== UI DESIGN SYSTEM ===
+
+Use this exact color palette via Tailwind CSS variables:
+
+Primary background: #0F0F13 (near black)
+Surface/card: #1A1A24
+Border: #2A2A3A
+Primary accent: #7C3AED (violet)
+Secondary accent: #06B6D4 (cyan)
+Text primary: #F1F1F5
+Text secondary: #9999AA
+Success: #10B981
+Warning: #F59E0B
+Error: #EF4444
+
+Typography:
+- Display/headings: font-semibold, tracking-tight
+- Body: font-normal, leading-relaxed
+- Code/metadata: font-mono
+
+Card style: bg-[#1A1A24] border border-[#2A2A3A] rounded-2xl shadow-lg
+
+Button primary: bg-violet-600 hover:bg-violet-500 text-white rounded-xl px-6 py-3 transition-all
+
+Use Framer Motion for:
+- Page transitions (fade + slide up)
+- Content blocks appearing one by one (staggered)
+- Stats counters animating on mount
+- Hover lift on cards (y: -4px)
+
+=== STREAMLIT ADMIN DASHBOARD ===
+
+File: admin/streamlit_app.py
+
+Pages (use st.sidebar for navigation):
+1. Overview: total users, campaigns, tasks from SQLite
+2. Campaign Browser: table of all campaigns with filters
+3. Task Monitor: live task status table, refresh every 5 seconds
+4. Prompt Tester: input form to test AI prompts and see raw output
+5. Generation Logs: scrollable log viewer
+6. System Health: check if Ollama, Redis, Celery are reachable
+
+Connect directly to the same SQLite database.
+
+=== EXPORT FEATURE ===
+
+PDF export: Use reportlab or weasyprint to render campaign content as a styled PDF
+DOCX export: Use python-docx to create a Word document with proper headings
+TXT export: Plain text dump of all content sections
+ZIP export: Include DOCX + all generated images + a metadata JSON file
+
+=== REQUIREMENTS FILES ===
+
+backend/requirements.txt:
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-jose[cryptography]
+passlib[bcrypt]
+celery
+redis
+python-multipart
+requests
+reportlab
+python-docx
+streamlit
+pandas
+
+frontend/package.json dependencies:
+react, react-dom, react-router-dom
+typescript
+vite
+tailwindcss
+framer-motion
+lucide-react
+recharts
+axios
+@types/react
+
+=== STARTUP COMMANDS ===
+
+Backend: uvicorn backend.main:app --reload --port 8000
+Frontend: cd frontend && npm run dev
+Admin: streamlit run admin/streamlit_app.py --server.port 8501
+Redis: redis-server (if available)
+Celery: celery -A backend.tasks worker --loglevel=info
+
+=== IMPORTANT NOTES FOR REPLIT ===
+
+1. If Redis is not available in the Replit environment, replace Celery with FastAPI's built-in BackgroundTasks. The generation logic stays identical, just runs in-process.
+
+2. If Ollama is not running, the ai_text.py service must return complete, realistic mock content — full blog articles, full captions, etc. — so the entire UI is demonstrable without any AI model.
+
+3. Use a .env file for: SECRET_KEY, DATABASE_URL, REDIS_URL, OLLAMA_URL
+
+4. Seed the database on first run with one demo user (demo@novacontent.ai / demo1234) and two sample campaigns so the dashboard is not empty.
+
+5. All API routes must be prefixed with /api/v1/
+
+6. Enable CORS for all origins during development.
+
+Build this completely, starting with backend models and routes, then frontend routing and layout, then the Generator page with polling, then History and Dashboard, then the Streamlit admin, then exports last.
